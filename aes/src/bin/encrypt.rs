@@ -8,7 +8,7 @@ use aes_gcm::{
 };
 
 fn main() -> Result<(), aes_gcm::Error> {
-    // collet the command line arguments
+    // collect the command line arguments
     let args: Vec<String> = env::args().collect();
     // the first argument is plaintext to encrypt
     if args.len() != 2 {
