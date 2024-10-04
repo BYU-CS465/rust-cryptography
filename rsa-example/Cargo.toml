@@ -1,0 +1,10 @@
+[package]
+name = "rsa-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22.1"
+base64ct = "1.6.0"
+rand = "0.8.5"
+rsa = "0.9.6"
