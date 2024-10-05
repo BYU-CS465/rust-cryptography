@@ -1,6 +1,6 @@
 # AES GCM
 
-This example shows how to use AES GCM to encrypt and data.
+This example code shows how to use AES GCM to encrypt and decrypt data.
 
 ## Encryption
 
@@ -26,7 +26,7 @@ This program expects three arguments:
 All arguments should be base64 encoded
 
 ```bash
-cargo run --bin decrypt oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU= Ra9SgbtJtCof7UkN TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
+$ cargo run --bin decrypt oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU= Ra9SgbtJtCof7UkN TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
 Key: oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU=
 Nonce: Ra9SgbtJtCof7UkN
 Ciphertext: TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
