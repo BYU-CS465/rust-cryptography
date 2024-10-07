@@ -37,3 +37,6 @@ $ cargo run hash important.txt --hash sha3 --check 376d249ff4fb483f0ff26f0cd949e
 
 - This code uses an enumerated type to represent the hashing algorithm, and
   implements `std::fmt::Display` so we can print out the enumerated type
+
+- This code uses the [base16ct crate](https://docs.rs/base16ct/latest/base16ct/)
+  to convert a hash to hex format.
