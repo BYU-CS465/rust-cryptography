@@ -5,7 +5,7 @@ This example code shows how to use RSA encrypt, decrypt, sign, and verify data.
 ## Encryption and decryption
 
 The `decrypt` program will print its public key and then allow the user to
-repeatedly enter cihertext to decrypt.
+repeatedly enter ciphertext to decrypt.
 
 ```bash
 $ cargo run --bin decrypt
