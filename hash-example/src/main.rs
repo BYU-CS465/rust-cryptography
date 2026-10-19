@@ -1,102 +1,79 @@
+use std::{error::Error, fmt, fs, path::PathBuf, process};
+
+use clap::{Parser, ValueEnum};
 use sha2::{Digest, Sha256};
 use sha3::Sha3_256;
-use std::fmt;
-use std::fs;
-use std::path::PathBuf;
 
-use clap::Parser;
-
-/// Generate and check hashes
-
+/// Generate and check hashes of a file
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// Positional: file name
-    filename: Option<PathBuf>,
+    /// The file to hash
+    filename: PathBuf,
 
-    /// Argument: type of hash
-    #[arg(long)]
-    hash: Option<String>,
+    /// The hash function to use
+    #[arg(long, value_enum, default_value_t = Hasher::Sha2)]
+    hash: Hasher,
 
-    /// Argument: check a hash (default is compute)
+    /// Check the file against this hash (in hex) instead of printing it
     #[arg(short, long)]
     check: Option<String>,
 }
 
+// deriving ValueEnum lets clap parse `--hash sha2` or `--hash sha3` and reject anything else
+#[derive(Clone, Copy, ValueEnum)]
 enum Hasher {
-    SHA2,
-    SHA3,
+    Sha2,
+    Sha3,
 }
 
 // implement fmt::Display so we can print out the enumerated type
 impl fmt::Display for Hasher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Hasher::SHA2 => {
-                write!(f, "SHA2")
-            }
-            Hasher::SHA3 => {
-                write!(f, "SHA3")
-            }
+            Hasher::Sha2 => write!(f, "SHA2"),
+            Hasher::Sha3 => write!(f, "SHA3"),
         }
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
-    let path = match cli.filename {
-        Some(path) => path,
-        None => {
-            println!("You must enter a filename. Try `cargo run hash --help`");
-            return;
-        }
+    // get the contents of the file as bytes, so we can hash any kind of file
+    let contents = fs::read(&cli.filename)
+        .map_err(|e| format!("cannot read {}: {e}", cli.filename.display()))?;
+
+    // hash the file with the chosen hash function
+    let hash = match cli.hash {
+        Hasher::Sha2 => Sha256::digest(&contents),
+        Hasher::Sha3 => Sha3_256::digest(&contents),
     };
 
-    // get a copy of the path so we can print it
-    let output_path = path.clone();
-    let pathname = output_path.to_str().expect("can't find that file");
+    // get a hex representation of the hash
+    let hex_hash = base16ct::lower::encode_string(&hash);
 
-    // get the contents of the file
-    let contents = fs::read_to_string(path).expect("Cannot read the file");
-
-    // what hash function are we using?
-    let hasher = match cli.hash {
-        Some(s) => {
-            if s == "sha3" {
-                Hasher::SHA3
+    match cli.check {
+        // if we are checking a hash, compare it to the one we computed
+        // (a hash is not secret, so this does not need a constant-time comparison)
+        Some(expected) => {
+            if expected.eq_ignore_ascii_case(&hex_hash) {
+                println!("The hash matches!");
             } else {
-                Hasher::SHA2
+                eprintln!("DANGER: the hash does not match!");
+                process::exit(1);
             }
         }
-        None => Hasher::SHA2,
-    };
-
-    let &mut hash;
-    match hasher {
-        Hasher::SHA2 => {
-            // hash the file
-            hash = Sha256::digest(contents);
-        }
-        Hasher::SHA3 => {
-            hash = Sha3_256::digest(contents);
+        // otherwise print the hash
+        None => {
+            println!(
+                "The {} hash of {}: {}",
+                cli.hash,
+                cli.filename.display(),
+                hex_hash
+            );
         }
     }
 
-    // get a hex representation of the hash
-    let hex_hash: String = base16ct::lower::encode_string(&hash);
-
-    // if we are checking a hash
-    match cli.check {
-        Some(s) => {
-            if s == hex_hash {
-                println!("The hash matches!");
-            } else {
-                println!("DANGER: the hash does not match!");
-            }
-        }
-        None => {
-            println!("The {} hash of {}: {}", hasher, pathname, hex_hash);
-        }
-    };
+    Ok(())
 }
