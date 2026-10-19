@@ -1,89 +1,45 @@
-use base64ct::{Base64, Encoding};
-use rsa::pkcs8::DecodePublicKey;
-use rsa::pss::{Signature, VerifyingKey};
-use rsa::sha2::Sha256;
-use rsa::signature::Verifier;
-use rsa::RsaPublicKey;
+use std::error::Error;
 
-use std::io;
+use base64::prelude::*;
+use rsa::{
+    pss::{Signature, VerifyingKey},
+    sha2::Sha256,
+    signature::Verifier,
+};
 
-fn main() {
+use rsa_example::{read_line, read_public_key};
+
+fn main() -> Result<(), Box<dyn Error>> {
     // get a public key from standard input
-    println!("Enter a public key in PEM format");
-    let mut pem_file = String::new();
-    loop {
-        let mut buffer = String::new();
-        match io::stdin().read_line(&mut buffer) {
-            Ok(_n) => (),
-            Err(_error) => {
-                panic!("Could not read input");
-            }
+    let public_key = read_public_key()?;
+
+    // derive the PSS verifying key, using SHA-256
+    let verifying_key = VerifyingKey::<Sha256>::new(public_key);
+
+    // get the text to verify
+    while let Some(data) = read_line("Enter data to verify, or nothing to exit")? {
+        // get the signature
+        let Some(signature) = read_line("Enter signature")? else {
+            eprintln!("No signature entered.");
+            continue;
         };
-        if buffer == "\n" {
-            break;
-        }
 
-        pem_file.push_str(&buffer);
-    }
-
-    // decode the public key
-    println!("key: {}", pem_file);
-    let pub_key = match RsaPublicKey::from_public_key_pem(&pem_file) {
-        Ok(key) => key,
-        Err(error) => panic!("Could not convert public key from PEM {}", error),
-    };
-
-    // derive the verifying key
-    let verifying_key: VerifyingKey<Sha256> = VerifyingKey::from(pub_key);
-
-    loop {
-        // get the text to verify
-        println!("Enter data to verify, or nothing to exit");
-        let mut data = String::new();
-        match io::stdin().read_line(&mut data) {
-            Ok(_n) => (),
-            Err(error) => {
-                println!("error: {error}");
-                continue;
-            }
-        }
-
-        let data = data.trim();
-
-        if data == "" {
-            return;
-        }
-
-        println!("Enter signature");
-
-        // get signature
-        let mut signature = String::new();
-        match io::stdin().read_line(&mut signature) {
-            Ok(_n) => (),
-            Err(error) => {
-                println!("error: {error}");
-                continue;
-            }
-        }
-
-        let signature = signature.trim();
-
-        // convert from BASE64
-        let signature = Base64::decode_vec(&signature).unwrap();
-        let signature =
-            Signature::try_from(signature.as_ref()).expect("Could not convert signature");
+        // convert from base 64
+        let Ok(signature) = BASE64_STANDARD.decode(&signature) else {
+            eprintln!("The signature must be base64 encoded.");
+            continue;
+        };
+        let Ok(signature) = Signature::try_from(signature.as_slice()) else {
+            eprintln!("That is not a valid signature.");
+            continue;
+        };
 
         // verify
-        // TBD -- just print an error if the signature fails
         match verifying_key.verify(data.as_bytes(), &signature) {
-            Ok(_) => (),
-            Err(_e) => {
-                println!("Could not verify signature!");
-                continue;
-            }
-        };
-
-        // print
-        println!("Signature is correct!");
+            Ok(()) => println!("Signature is correct!"),
+            Err(_) => eprintln!("Could not verify signature!"),
+        }
     }
+
+    Ok(())
 }

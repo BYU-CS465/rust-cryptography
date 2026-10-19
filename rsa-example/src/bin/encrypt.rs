@@ -1,63 +1,33 @@
-use base64ct::{Base64, Encoding};
-use rand;
-use rsa::pkcs8::DecodePublicKey;
-use rsa::{Pkcs1v15Encrypt, RsaPublicKey};
-use std::io;
+use std::error::Error;
 
-fn main() {
+use base64::prelude::*;
+use rsa::{Oaep, sha2::Sha256};
+
+use rsa_example::{read_line, read_public_key};
+
+fn main() -> Result<(), Box<dyn Error>> {
     // set up a random number generator
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // get a public key from standard input
-    println!("Enter a public key in PEM format");
-    let mut pem_file = String::new();
-    loop {
-        let mut buffer = String::new();
-        match io::stdin().read_line(&mut buffer) {
-            Ok(_n) => (),
-            Err(_error) => {
-                panic!("Could not read input");
-            }
+    let public_key = read_public_key()?;
+
+    // get the text to encrypt
+    while let Some(plaintext) = read_line("Enter something to encrypt, or nothing to exit")? {
+        // encrypt the plaintext using OAEP padding with SHA-256
+        // (OAEP is recommended over the older PKCS#1 v1.5 padding).
+        // RSA can only encrypt short messages, so this fails if the message is too long.
+        let Ok(ciphertext) =
+            public_key.encrypt(&mut rng, Oaep::<Sha256>::new(), plaintext.as_bytes())
+        else {
+            eprintln!("Encryption failed: the message is too long.");
+            continue;
         };
-        if buffer == "\n" {
-            break;
-        }
-
-        pem_file.push_str(&buffer);
-    }
-
-    // decode the public key
-    println!("key: {}", pem_file);
-    let pub_key = match RsaPublicKey::from_public_key_pem(&pem_file) {
-        Ok(key) => key,
-        Err(error) => panic!("Could not convert public key from PEM {}", error),
-    };
-
-    loop {
-        // get the text to encrypt
-        println!("Enter something to encrypt, or nothing to exit");
-        let mut plaintext = String::new();
-        match io::stdin().read_line(&mut plaintext) {
-            Ok(_n) => (),
-            Err(error) => {
-                println!("error: {error}");
-                continue;
-            }
-        }
-
-        let plaintext = plaintext.trim();
-
-        if plaintext == "" {
-            return;
-        }
-
-        // encrypt the plaintext
-        let ciphertext = pub_key
-            .encrypt(&mut rng, Pkcs1v15Encrypt, plaintext.as_ref())
-            .expect("failed to encrypt");
 
         // print out what we have
         println!("Here is the ciphertext:");
-        println!("{}", Base64::encode_string(&ciphertext));
+        println!("{}", BASE64_STANDARD.encode(&ciphertext));
     }
+
+    Ok(())
 }

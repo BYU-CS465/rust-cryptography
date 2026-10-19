@@ -1,53 +1,44 @@
-use base64ct::LineEnding;
-use base64ct::{Base64, Encoding};
-use rsa::pkcs8::EncodePublicKey;
-use rsa::pss::SigningKey;
-use rsa::sha2::Sha256;
-use rsa::signature::{RandomizedSigner, SignatureEncoding};
-use rsa::{RsaPrivateKey, RsaPublicKey};
+use std::error::Error;
 
-use std::io;
+use base64::prelude::*;
+use rsa::{
+    RsaPrivateKey,
+    pkcs8::{EncodePublicKey, LineEnding},
+    pss::BlindedSigningKey,
+    sha2::Sha256,
+    signature::{Keypair, RandomizedSigner, SignatureEncoding},
+};
 
-fn main() {
+use rsa_example::read_line;
+
+fn main() -> Result<(), Box<dyn Error>> {
     // initialize a randomness generator
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // generate a new RSA private key
     let bits = 2048;
-    let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-    // get public key
-    let pub_key = RsaPublicKey::from(&private_key);
-    // generate a signing key from the private key
-    let signing_key = SigningKey::<Sha256>::new(private_key);
+    let private_key = RsaPrivateKey::new(&mut rng, bits)?;
+    // generate a PSS signing key from the private key, using SHA-256
+    let signing_key = BlindedSigningKey::<Sha256>::new(private_key);
+    // get the matching verifying (public) key
+    let verifying_key = signing_key.verifying_key();
 
-    let pub_pem = pub_key
-        .to_public_key_pem(LineEnding::default())
-        .expect("failed to convert public key");
+    // print out the public key
     println!("Here is my public key:");
-    println!("{}", pub_pem);
+    println!(
+        "{}",
+        verifying_key.to_public_key_pem(LineEnding::default())?
+    );
 
-    loop {
-        // get the text to sign
-        println!("Enter something to sign, or nothing to exit");
-        let mut data = String::new();
-        match io::stdin().read_line(&mut data) {
-            Ok(_n) => (),
-            Err(error) => {
-                println!("error: {error}");
-                continue;
-            }
-        }
-
-        let data = data.trim();
-
-        if data == "" {
-            return;
-        }
+    // get the text to sign
+    while let Some(data) = read_line("Enter something to sign, or nothing to exit")? {
         // sign
-        let signature = signing_key.sign_with_rng(&mut rng, data.as_ref());
+        let signature = signing_key.sign_with_rng(&mut rng, data.as_bytes());
 
         // print
-        println!("Signature: ");
-        println!("{}", Base64::encode_string(&signature.to_bytes()));
+        println!("Signature:");
+        println!("{}", BASE64_STANDARD.encode(signature.to_bytes()));
     }
+
+    Ok(())
 }

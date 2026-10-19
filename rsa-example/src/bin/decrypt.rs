@@ -1,56 +1,46 @@
-use base64ct::LineEnding;
-use base64ct::{Base64, Encoding};
-use rsa::pkcs8::EncodePublicKey;
-use rsa::Pkcs1v15Encrypt;
-use rsa::RsaPrivateKey;
-use rsa::RsaPublicKey;
-use std::io;
+use std::error::Error;
 
-fn main() {
+use base64::prelude::*;
+use rsa::{
+    Oaep, RsaPrivateKey, RsaPublicKey,
+    pkcs8::{EncodePublicKey, LineEnding},
+    sha2::Sha256,
+};
+
+use rsa_example::read_line;
+
+fn main() -> Result<(), Box<dyn Error>> {
     // get a random number generator
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     // generate an RSA key pair
     let bits = 2048;
-    let priv_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-    let pub_key = RsaPublicKey::from(&priv_key);
+    let private_key = RsaPrivateKey::new(&mut rng, bits)?;
+    let public_key = RsaPublicKey::from(&private_key);
 
     // print out the public key
-    let pub_pem = pub_key
-        .to_public_key_pem(LineEnding::default())
-        .expect("failed to convert public key");
     println!("Here is my public key:");
-    println!("{}", pub_pem);
+    println!("{}", public_key.to_public_key_pem(LineEnding::default())?);
 
-    loop {
-        // wait for input of encrypted text
-        println!("Enter something to decrypt, or nothing to exit");
-        let mut ciphertext = String::new();
-        match io::stdin().read_line(&mut ciphertext) {
-            Ok(_n) => (),
-            Err(error) => {
-                println!("error: {error}");
-                continue;
-            }
-        }
+    // wait for input of encrypted text
+    while let Some(ciphertext) = read_line("Enter something to decrypt, or nothing to exit")? {
+        // convert from base 64
+        let Ok(ciphertext) = BASE64_STANDARD.decode(&ciphertext) else {
+            eprintln!("The ciphertext must be base64 encoded.");
+            continue;
+        };
 
-        let ciphertext = ciphertext.trim();
-
-        if ciphertext == "" {
-            return;
-        }
-
-        // convert from BASE64
-        let ciphertext = Base64::decode_vec(&ciphertext).unwrap();
-
-        // decrypt the ciphertext
-        let plaintext = priv_key
-            .decrypt(Pkcs1v15Encrypt, ciphertext.as_ref())
-            .expect("failed to decrypt");
-
-        let plaintext =
-            String::from_utf8(plaintext).expect("Could not convert plaintext to a string");
+        // decrypt the ciphertext using OAEP padding with SHA-256
+        let Ok(plaintext) = private_key.decrypt(Oaep::<Sha256>::new(), &ciphertext) else {
+            eprintln!("Decryption failed.");
+            continue;
+        };
 
         // print out what we have
-        println!("Plaintext: {}", plaintext);
+        match String::from_utf8(plaintext) {
+            Ok(plaintext) => println!("Plaintext: {plaintext}"),
+            Err(_) => eprintln!("The plaintext is not valid UTF-8 text."),
+        }
     }
+
+    Ok(())
 }
