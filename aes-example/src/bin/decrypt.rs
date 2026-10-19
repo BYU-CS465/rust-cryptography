@@ -1,13 +1,16 @@
-use std::env;
+use std::{env, error::Error, process};
 
 use base64::prelude::*;
 
+// Note: we use `aead::Nonce<Aes256Gcm>` rather than `aes_gcm::Nonce`. The latter
+// is parameterized by the nonce *size* (e.g. `aes_gcm::Nonce<U12>`), so naming the
+// cipher, as in `Nonce::<Aes256Gcm>`, only works with the `aead` version.
 use aes_gcm::{
-    aead::{Aead, KeyInit},
-    Aes256Gcm, Key, Nonce,
+    Aes256Gcm,
+    aead::{Aead, Key, KeyInit, Nonce},
 };
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     // collect the command line arguments
     let args: Vec<String> = env::args().collect();
     // the arguments are:
@@ -15,41 +18,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // (2) a nonce
     // (3) ciphertext
     if args.len() != 4 {
-        println!(
-            "This program takes three arguments: (1) a key, (2) a nonce, (3) ciphertext. All should be base64 encoded"
+        eprintln!(
+            "This program takes three arguments: (1) a key, (2) a nonce, (3) ciphertext. All should be base64 encoded."
         );
-        return Ok(());
+        process::exit(1);
     }
 
     // Convert the key from base 64 into a Key object
-    let key = BASE64_STANDARD.decode(&args[1])?;
-    let key: &[u8] = &key;
-    let key: &Key<Aes256Gcm> = key.try_into()?;
+    let key_bytes = BASE64_STANDARD.decode(&args[1])?;
+    let key =
+        Key::<Aes256Gcm>::try_from(key_bytes.as_slice()).map_err(|_| "the key must be 256 bits")?;
 
     // Convert the nonce from base 64 into a Nonce object
-    let nonce = BASE64_STANDARD.decode(&args[2])?;
-    let nonce = Nonce::from_slice(&nonce);
+    let nonce_bytes = BASE64_STANDARD.decode(&args[2])?;
+    let nonce = Nonce::<Aes256Gcm>::try_from(nonce_bytes.as_slice())
+        .map_err(|_| "the nonce must be 96 bits")?;
 
-    // Convert the Ciphertext from base 64 into an array of u8
+    // Convert the ciphertext from base 64 into a vector of bytes
     let ciphertext = BASE64_STANDARD.decode(&args[3])?;
-    let ciphertext: &[u8] = &ciphertext;
 
-    // initialize the cipher
     // initialize AES GCM with a 256-bit key
     let cipher = Aes256Gcm::new(&key);
 
     // decrypt the ciphertext
-    // note, we need the match here so we can convert an AES GCM error into a standard error.
-    let plaintext = match cipher.decrypt(nonce, ciphertext.as_ref()) {
-        Ok(result) => String::from_utf8(result)?,
-        Err(_e) => "decryption failure".to_string(),
+    // this fails if the key, nonce, or ciphertext is wrong or the ciphertext was tampered with
+    let Ok(plaintext) = cipher.decrypt(&nonce, ciphertext.as_slice()) else {
+        eprintln!("Decryption failed: the ciphertext could not be authenticated.");
+        process::exit(1);
     };
+    let plaintext = String::from_utf8(plaintext)?;
 
     // print out what we have
-    println!("Key: {}", BASE64_STANDARD.encode(&key));
-    println!("Nonce: {}", BASE64_STANDARD.encode(&nonce));
+    println!("Key: {}", BASE64_STANDARD.encode(key));
+    println!("Nonce: {}", BASE64_STANDARD.encode(nonce));
     println!("Ciphertext: {}", BASE64_STANDARD.encode(&ciphertext));
-    println!("Plaintext: {}", plaintext);
+    println!("Plaintext: {plaintext}");
 
     Ok(())
 }

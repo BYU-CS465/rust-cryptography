@@ -9,10 +9,10 @@ random 256-bit AES key and nonce for AES GCM mode and encrypts the text.
 
 ```bash
 $ cargo run --bin encrypt hello
-Key: oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU=
-Nonce: Ra9SgbtJtCof7UkN
+Key: Wad9dtmU024PZ7u8neQRSKrPl2h072c8Zd4+VNUJY0M=
+Nonce: 4iiGDwVSKjhXXVL6
 Plaintext: hello
-Ciphertext: TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
+Ciphertext: Sb8/uTr/AmYQLvH+GLJ2BBInz4Ld
 ```
 
 ## Decryption
@@ -23,12 +23,20 @@ This program expects three arguments:
 - a nonce
 - ciphertext
 
-All arguments should be base64 encoded
+All arguments should be base64 encoded.
 
 ```bash
-$ cargo run --bin decrypt oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU= Ra9SgbtJtCof7UkN TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
-Key: oYJGle56hySbk5XRDb+5hIXmWFquhpV+2+9Mv5ObwnU=
-Nonce: Ra9SgbtJtCof7UkN
-Ciphertext: TkrXHAZBnSYdjpiQQ4k8tjW7ClMS
+$ cargo run --bin decrypt Wad9dtmU024PZ7u8neQRSKrPl2h072c8Zd4+VNUJY0M= 4iiGDwVSKjhXXVL6 Sb8/uTr/AmYQLvH+GLJ2BBInz4Ld
+Key: Wad9dtmU024PZ7u8neQRSKrPl2h072c8Zd4+VNUJY0M=
+Nonce: 4iiGDwVSKjhXXVL6
+Ciphertext: Sb8/uTr/AmYQLvH+GLJ2BBInz4Ld
 Plaintext: hello
+```
+
+If the key, nonce, or ciphertext is wrong, or the ciphertext has been
+modified, AES GCM detects this and decryption fails:
+
+```bash
+$ cargo run --bin decrypt Wad9dtmU024PZ7u8neQRSKrPl2h072c8Zd4+VNUJY0M= 4iiGDwVSKjhXXVL6 Xb8/uTr/AmYQLvH+GLJ2BBInz4Ld
+Decryption failed: the ciphertext could not be authenticated.
 ```
