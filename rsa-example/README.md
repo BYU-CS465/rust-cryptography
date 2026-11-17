@@ -3,8 +3,8 @@
 This example code shows how to use RSA to encrypt, decrypt, sign, and verify
 data. Encryption uses OAEP padding and signatures use PSS, both with SHA-256.
 
-It uses version 0.10 of the [rsa crate](https://docs.rs/rsa/), which needs
-Rust 1.87 or newer.
+It uses version 0.10 of the [rsa crate](https://docs.rs/rsa/). Use Rust 1.98 or
+newer, as the Rust book does (run `rustup update`).
 
 ## Encryption and decryption
 

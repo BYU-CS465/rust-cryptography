@@ -11,5 +11,6 @@ This repository contains a few examples of how to use the
 | [hash-example](hash-example/)     | Hashing a file with SHA-256 or SHA3-256                        |
 
 Each example is its own Cargo project with a README that shows how to run it.
-You need Rust 1.88 or newer to build all of them (run `rustup update` if
-cargo says your Rust is too old).
+Use Rust 1.98 or newer, the same version the
+[Rust book](https://doc.rust-lang.org/book/) uses. Run `rustup update` to get
+the latest version.
