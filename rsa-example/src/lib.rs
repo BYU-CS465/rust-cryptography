@@ -2,7 +2,7 @@
 
 use std::{error::Error, io};
 
-use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
+use rsa::{PublicKey, pkcs8::DecodePublicKey};
 
 /// Print a prompt and read one line from standard input.
 ///
@@ -22,7 +22,7 @@ pub fn read_line(prompt: &str) -> io::Result<Option<String>> {
 /// Read a public key in PEM format from standard input.
 ///
 /// Reads lines up to and including the `-----END PUBLIC KEY-----` line.
-pub fn read_public_key() -> Result<RsaPublicKey, Box<dyn Error>> {
+pub fn read_public_key() -> Result<PublicKey, Box<dyn Error>> {
     println!("Enter a public key in PEM format");
     let mut pem = String::new();
     loop {
@@ -38,7 +38,7 @@ pub fn read_public_key() -> Result<RsaPublicKey, Box<dyn Error>> {
     }
 
     // decode the public key
-    let public_key = RsaPublicKey::from_public_key_pem(&pem)
+    let public_key = PublicKey::from_public_key_pem(&pem)
         .map_err(|e| format!("that is not a valid public key: {e}"))?;
     Ok(public_key)
 }

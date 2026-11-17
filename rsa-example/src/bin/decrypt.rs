@@ -2,7 +2,7 @@ use std::error::Error;
 
 use base64::prelude::*;
 use rsa::{
-    Oaep, RsaPrivateKey, RsaPublicKey,
+    Oaep, PrivateKey, PublicKey,
     pkcs8::{EncodePublicKey, LineEnding},
     sha2::Sha256,
 };
@@ -14,8 +14,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut rng = rand::rng();
     // generate an RSA key pair
     let bits = 2048;
-    let private_key = RsaPrivateKey::new(&mut rng, bits)?;
-    let public_key = RsaPublicKey::from(&private_key);
+    let private_key = PrivateKey::new(&mut rng, bits)?;
+    let public_key = PublicKey::from(&private_key);
 
     // print out the public key
     println!("Here is my public key:");

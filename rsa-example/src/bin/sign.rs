@@ -2,9 +2,9 @@ use std::error::Error;
 
 use base64::prelude::*;
 use rsa::{
-    RsaPrivateKey,
+    PrivateKey,
     pkcs8::{EncodePublicKey, LineEnding},
-    pss::BlindedSigningKey,
+    pss::SigningKey,
     sha2::Sha256,
     signature::{Keypair, RandomizedSigner, SignatureEncoding},
 };
@@ -17,9 +17,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // generate a new RSA private key
     let bits = 2048;
-    let private_key = RsaPrivateKey::new(&mut rng, bits)?;
+    let private_key = PrivateKey::new(&mut rng, bits)?;
     // generate a PSS signing key from the private key, using SHA-256
-    let signing_key = BlindedSigningKey::<Sha256>::new(private_key);
+    let signing_key = SigningKey::<Sha256>::new(private_key);
     // get the matching verifying (public) key
     let verifying_key = signing_key.verifying_key();
 

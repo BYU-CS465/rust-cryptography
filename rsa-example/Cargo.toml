@@ -2,11 +2,9 @@
 name = "rsa-example"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 
 [dependencies]
 base64 = "0.23.1"
 rand = "0.10.3"
-# This is a release candidate, so it is pinned exactly: later release candidates
-# may change the API. Remove the `=` once rsa 0.10.0 is released.
-rsa = { version = "=0.10.0-rc.19", features = ["sha2"] }
+rsa = "0.10.0"

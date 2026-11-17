@@ -3,8 +3,8 @@
 This example code shows how to use RSA to encrypt, decrypt, sign, and verify
 data. Encryption uses OAEP padding and signatures use PSS, both with SHA-256.
 
-It uses a release candidate of the [rsa crate](https://docs.rs/rsa/), version
-`0.10.0-rc.19`, which is pinned exactly in `Cargo.toml`.
+It uses version 0.10 of the [rsa crate](https://docs.rs/rsa/), which needs
+Rust 1.87 or newer.
 
 ## Encryption and decryption
 
@@ -91,18 +91,24 @@ Signature is correct!
 - `src/lib.rs` has two helpers shared by all four programs: `read_line` reads
   one line of input, and `read_public_key` reads a PEM public key.
 
-- Encryption uses OAEP padding, which is recommended over the older PKCS#1
-  v1.5 encryption padding.
+- The key types are `rsa::PrivateKey` and `rsa::PublicKey`. (Older versions of
+  the crate, and older examples online, call them `RsaPrivateKey` and
+  `RsaPublicKey`.)
 
-- Signing uses `pss::BlindedSigningKey`, as the rsa crate documentation
-  recommends.
+- Encryption uses OAEP padding with SHA-256 (`Oaep::<Sha256>`), and signing
+  uses PSS with SHA-256 (`pss::SigningKey<Sha256>` and
+  `pss::VerifyingKey<Sha256>`). These are the currently recommended schemes.
+  The older PKCS#1 v1.5 padding is still available, but only if you enable the
+  crate's `pkcs1v15` feature, because it is easy to use insecurely.
+
+- `pss::SigningKey` uses blinding by default, which protects the private key
+  against timing attacks. (Older versions had a separate `BlindedSigningKey`.)
 
 ## Security note
 
-The rsa crate has a known timing side-channel,
+Versions of the rsa crate before 0.10 had a timing side-channel,
 [RUSTSEC-2023-0071](https://rustsec.org/advisories/RUSTSEC-2023-0071) (the
-"Marvin Attack"): its private-key operations do not run in constant time, so an
-attacker who can measure how long decryption takes could learn the private key.
-No version of the crate fixes this yet. Running these examples on your own
-computer is fine, but don't use this crate to decrypt or sign on a server where
-attackers can time the responses.
+"Marvin Attack"): their private-key operations did not run in constant time, so
+an attacker who could measure how long decryption took could learn the private
+key. Version 0.10 fixes this by using constant-time arithmetic, which is one
+reason to use 0.10 or newer.
